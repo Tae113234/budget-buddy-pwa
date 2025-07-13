@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const budgetCategoryInput = document.getElementById('budget-category-input');
     const budgetAmountInput = document.getElementById('budget-amount-input');
-    const setBudgetBtn = document.getElementById('set-budget-btn');
+    const setBudgetBtn = document = document.getElementById('set-budget-btn');
     const currentBudgetsList = document.getElementById('current-budgets');
 
     const confirmationOverlay = document.getElementById('confirmation-overlay');
@@ -334,6 +334,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return transactionDate.getFullYear() === currentViewDate.getFullYear() &&
                    transactionDate.getMonth() === currentViewDate.getMonth();
         });
+
+        // --- เพิ่มบรรทัดนี้เข้ามา ---
+        console.log("Filtered Transactions inside updateSummary:", filteredTransactions);
+        // ------------------------
+
+        // ถ้าไม่มีข้อมูลที่ถูกกรอง ให้แสดงข้อความว่า "ไม่มีข้อมูล"
+        if (filteredTransactions.length === 0) {
+            totalIncomeDisplay.textContent = '0.00';
+            totalExpenseDisplay.textContent = '0.00';
+            currentBalanceDisplay.textContent = '0.00';
+            noChartDataMessage.classList.remove('hidden'); // Show "No data" message
+            renderCategoryChart([]); // Render empty chart
+            return;
+        }
+
+        // ซ่อนข้อความ "ไม่มีข้อมูล" ถ้ามีข้อมูล
+        noChartDataMessage.classList.add('hidden'); // Hide "No data" message
+
 
         filteredTransactions.forEach(transaction => {
             if (transaction.type === 'income') {
