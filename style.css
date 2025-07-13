@@ -1,0 +1,710 @@
+/* กำหนดค่าเริ่มต้นสำหรับทุกองค์ประกอบ */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: #f0f2f5; /* สีพื้นหลังอ่อนๆ */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* ให้เริ่มต้นที่ด้านบนของจอแทน center */
+    min-height: 100vh;
+    color: #333;
+    overflow-y: auto; /* ให้ body สามารถ scroll ได้ถ้าเนื้อหาเกิน */
+    -webkit-overflow-scrolling: touch; /* เพื่อการ scroll ที่ smooth บน iOS */
+}
+
+/* App Container - จำลองหน้าจอโทรศัพท์ */
+.app-container {
+    width: 100%;
+    max-width: 420px; /* ขนาดสูงสุดที่ดูเหมือนมือถือ */
+    min-height: 100vh; /* ใช้ min-height แทน height เพื่อให้ยืดได้ */
+    background-color: #fff;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    position: relative; /* เปลี่ยนจาก absolute เป็น relative เพื่อให้ child ที่เป็น absolute ทำงานกับมัน */
+    overflow: hidden; /* ซ่อน scrollbar ถ้าเนื้อหาเกินใน app-container */
+}
+
+/* Header */
+header {
+    background-color: #6a0dad; /* สีม่วงเข้ม */
+    color: white;
+    padding: 15px;
+    text-align: center;
+    /* font-size: 1.2em; ถูกกำหนดใน h1 แล้ว */
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding-bottom: 20px; /* เพิ่ม padding ด้านล่าง เพื่อให้มีที่ว่างสำหรับเดือนที่แสดง */
+}
+
+.header-month-display {
+    font-size: 0.9em; /* ขนาดฟอนต์สำหรับแสดงเดือนใน header */
+    font-weight: 400;
+    margin-top: 5px;
+    color: #f0f2f5; /* สีขาวอมเทาเล็กน้อย */
+}
+
+/* Main Content Area */
+main {
+    flex-grow: 1; /* ให้ main content ขยายเต็มพื้นที่ที่เหลือ */
+    padding: 20px;
+    overflow-y: auto; /* ให้ส่วน main สามารถ scroll ได้ถ้าเนื้อหาเกิน */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 80px; /* เว้นที่ว่างสำหรับ bottom nav */
+}
+
+section {
+    padding: 0px; /* ลด padding จาก 20px */
+    display: none; /* ซ่อนทุก section โดย default */
+}
+
+section.active-screen {
+    display: block; /* แสดงเฉพาะ section ที่มี class active-screen */
+}
+
+section.hidden-screen {
+    display: none; /* ซ่อน section ที่มี class hidden-screen */
+}
+
+h2 {
+    color: #6a0dad;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 600;
+}
+
+h3 {
+    color: #555;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    font-weight: 600;
+}
+
+/* Form Group */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-weight: 400;
+}
+
+.form-group input[type="number"],
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 1em;
+    color: #333;
+    -webkit-appearance: none; /* ลบ style พื้นฐานของ input บน iOS */
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.form-group input[type="number"]::-webkit-outer-spin-button,
+.form-group input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.form-group input[type="number"] {
+  appearance: textfield;          /* ใช้กับ browser ทั่วไป */
+  -moz-appearance: textfield;     /* Firefox */
+  -webkit-appearance: none;       /* Safari/Chrome (ถ้าต้องการลบ spinner) */
+}
+
+.form-group select {
+    background-color: #f9f9f9;
+    cursor: pointer;
+}
+
+/* Radio Group */
+.radio-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.radio-group input[type="radio"] {
+    display: none; /* ซ่อน radio button เดิม */
+}
+
+.radio-group label {
+    background-color: #f0f0f0;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-grow: 1;
+    text-align: center;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-weight: 400;
+    color: #555;
+    border: 1px solid #ddd;
+}
+
+.radio-group input[type="radio"]:checked + label {
+    background-color: #6a0dad; /* สีม่วงเมื่อเลือก */
+    color: white;
+    border-color: #6a0dad;
+}
+
+/* Primary Button */
+.primary-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #6a0dad; /* สีม่วง */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-top: 10px;
+}
+
+.primary-btn:hover {
+    background-color: #5a0c9d; /* สีม่วงเข้มขึ้นเมื่อ hover */
+    transform: translateY(-2px);
+}
+
+.primary-btn:active {
+    transform: translateY(0); /* ไม่มี translateY เมื่อกด */
+}
+
+/* Transaction List */
+.transaction-list-container {
+    max-height: 300px; /* จำกัดความสูง */
+    overflow-y: auto; /* เพิ่ม scrollbar ถ้าเนื้อหาเกิน */
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+#transaction-list {
+    list-style: none;
+    padding: 0;
+}
+
+.transaction-date-group {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    padding: 5px 10px;
+    background-color: #e6e6e6; /* สีพื้นหลังของกลุ่มวันที่ */
+    border-radius: 5px;
+    font-weight: 600;
+    color: #444;
+}
+
+.transaction-date-group:first-child {
+    margin-top: 0;
+}
+
+.transaction-date-group h4 {
+    margin: 0;
+    font-size: 0.9em;
+}
+
+.transaction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+    background-color: #fff;
+    margin-bottom: 5px; /* Spacing between list items */
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.transaction-item:last-child {
+    border-bottom: none; /* No border for the last item */
+}
+
+.transaction-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.transaction-description {
+    font-weight: 600;
+    color: #333;
+    font-size: 1em;
+}
+
+.transaction-category {
+    font-size: 0.85em;
+    color: #777;
+    margin-top: 2px;
+}
+
+.transaction-amount {
+    font-weight: 600;
+    font-size: 1.1em;
+    padding-left: 10px;
+    white-space: nowrap; /* Prevent wrapping */
+}
+
+.transaction-item.expense .transaction-amount {
+    color: #dc3545; /* สีแดงสำหรับรายจ่าย */
+}
+
+.transaction-item.income .transaction-amount {
+    color: #28a745; /* สีเขียวสำหรับรายรับ */
+}
+
+/* Transaction actions (edit/delete buttons) */
+.transaction-actions {
+    display: flex;
+    align-items: center;
+    margin-left: 15px;
+}
+
+.transaction-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem; /* ขนาด icon */
+    margin-left: 10px;
+    padding: 5px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.transaction-actions button:hover {
+    transform: scale(1.2); /* ทำให้ icon ใหญ่ขึ้นเล็กน้อยเมื่อ hover */
+}
+
+/* Icon Colors */
+.edit-btn {
+    color: #ffc107; /* เปลี่ยนเป็นสีเหลืองตามต้องการ */
+}
+
+.delete-btn {
+    color: #dc3545; /* สีแดงสำหรับถังขยะ */
+}
+
+
+/* Summary Section */
+.summary-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.summary-card {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    text-align: center;
+    flex: 1 1 calc(50% - 15px); /* 2 columns, with gap */
+    min-width: 150px; /* Ensure cards don't get too small */
+}
+
+.summary-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1em;
+    color: #6a0dad;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.summary-card p {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: #333;
+}
+
+.income-card p {
+    color: #28a745; /* Green */
+}
+
+.expense-card p {
+    color: #dc3545; /* Red */
+}
+
+.balance-card p {
+    color: #6a0dad; /* Purple */
+}
+
+.month-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.month-navigation .nav-arrow {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    color: #6a0dad;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease;
+}
+
+.month-navigation .nav-arrow:hover {
+    background-color: #eee;
+}
+
+#summary-month-display {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #333;
+}
+
+.chart-container {
+    position: relative; /* สำหรับให้ข้อความ no-data อยู่ตรงกลาง chart */
+    width: 100%;
+    max-width: 300px; /* กำหนดขนาดสูงสุดของ Chart */
+    margin: 20px auto; /* จัดกึ่งกลาง */
+    min-height: 250px; /* กำหนดความสูงต่ำสุด */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#category-chart {
+    max-width: 100%; /* ให้ canvas ไม่เกิน container */
+    max-height: 300px;
+}
+
+.hidden-message {
+    display: none;
+}
+
+#no-chart-data {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #777;
+    font-style: italic;
+    text-align: center;
+    width: 80%; /* จำกัดความกว้างของข้อความ */
+}
+
+
+/* Budget Section */
+#current-budgets {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+.budget-item {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+    margin-bottom: 10px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.budget-info {
+    flex-grow: 1;
+}
+
+.budget-category-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 1em;
+}
+
+.budget-amount-display {
+    font-weight: 600;
+    color: #6a0dad;
+    margin-left: 5px;
+}
+
+.budget-status {
+    font-size: 0.85em;
+    margin-top: 5px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    display: inline-block; /* ทำให้เป็น block และปรับขนาดตามเนื้อหา */
+}
+
+.budget-status.over-budget {
+    background-color: #f8d7da; /* Light red background */
+    color: #721c24; /* Darker red text */
+    border: 1px solid #f5c6cb;
+}
+
+.budget-status.warning-budget {
+    background-color: #fff3cd; /* Light yellow background */
+    color: #856404; /* Darker yellow text */
+    border: 1px solid #ffeeba;
+}
+
+
+.budget-actions .delete-budget-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #dc3545; /* Red color for delete budget button */
+    font-size: 1.1em;
+    transition: transform 0.2s ease-in-out;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+.budget-actions .delete-budget-btn:hover {
+    transform: scale(1.2);
+}
+
+
+/* Bottom Navigation */
+footer {
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding: 10px 0;
+    position: sticky; /* ทำให้ Footer ติดอยู่ด้านล่าง */
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+}
+
+.bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 15px;
+    font-size: 0.8em;
+    transition: color 0.3s ease, background-color 0.2s ease;
+    border-radius: 8px; /* เพิ่ม border-radius */
+}
+
+.nav-item i {
+    font-size: 1.4em;
+    margin-bottom: 5px;
+}
+
+/* สีเมื่อ active และเมื่อ hover */
+.nav-item.active {
+    color: #6a0dad; /* สีม่วงเมื่อ active */
+    /* background-color: #f0f0f0; ทำให้เห็นชัดเจนขึ้น */
+}
+
+.nav-item:hover:not(.active) { /* ไม่ต้องเปลี่ยนสีพื้นหลังเมื่อ active แล้ว */
+    color: #6a0dad; /* เปลี่ยนเป็นสีม่วงเมื่อ hover */
+    background-color: #f7f7f7; /* สีพื้นหลังอ่อนๆ เมื่อ hover */
+}
+
+.nav-item:active {
+    background-color: #e0e0e0; /* สีพื้นหลังเมื่อกดค้าง */
+    transform: scale(0.98); /* ทำให้ปุ่มดูเหมือนถูกกดลงไปเล็กน้อย */
+}
+
+/* Confirmation Modal */
+#confirmation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#confirmation-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#confirmation-modal {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-width: 350px;
+    width: 90%;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+#confirmation-overlay.show #confirmation-modal {
+    transform: translateY(0);
+}
+
+#confirmation-modal h3 {
+    margin-top: 0;
+    color: #6a0dad;
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+#confirmation-modal p {
+    margin-bottom: 25px;
+    color: #555;
+    font-size: 1em;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.modal-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+.modal-btn.confirm {
+    background-color: #28a745; /* Green */
+    color: white;
+}
+
+.modal-btn.confirm:hover {
+    background-color: #218838;
+}
+
+.modal-btn.cancel {
+    background-color: #6c757d; /* Gray */
+    color: white;
+}
+
+.modal-btn.cancel:hover {
+    background-color: #5a6268;
+}
+
+/* Notification Styles */
+.notification {
+    position: fixed;
+    bottom: 80px; /* Above the navigation bar */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 1001;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    min-width: 250px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.notification.show {
+    opacity: 1;
+}
+
+.notification.success {
+    background-color: #28a745; /* Green */
+}
+
+.notification.error {
+    background-color: #dc3545; /* Red */
+}
+
+.notification.info {
+    background-color: #17a2b8; /* Blue */
+}
+
+
+/* Confetti Animation */
+#confetti-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allows clicks to pass through */
+    overflow: hidden;
+    z-index: 999; /* Below modal, above other content */
+}
+
+.confetti-particle {
+    position: absolute;
+    width: 8px; /* Slightly smaller */
+    height: 8px; /* Slightly smaller */
+    border-radius: 50%; /* Circle */
+    opacity: 0;
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1); /* Ease out */
+    animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50px) rotate(0deg); /* Start above view, slightly left/right for spread */
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--confetti-end-x), 100vh) rotate(var(--confetti-rotate-deg)); /* Fall down, rotate */
+    }
+}
+
+
+/* สำหรับจอขนาดเล็ก */
+@media (max-width: 420px) {
+    body {
+        align-items: stretch; /* ให้ body ยืดเต็มความสูงของจอ */
+    }
+    .app-container {
+        min-height: 100vh; /* ให้ app-container ยืดเต็มความสูงของจอใน mobile */
+        border-radius: 0; /* ลบขอบมนบน mobile */
+        box-shadow: none; /* ลบ shadow บน mobile */
+    }
+
+    main {
+        padding: 15px; /* ลด padding บน mobile */
+    }
+}

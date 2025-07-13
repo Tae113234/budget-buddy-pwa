@@ -1,0 +1,21 @@
+{
+  "name": "BudgetBuddy App",
+  "short_name": "BudgetBuddy",
+  "description": "An easy-to-use budget tracker.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#6a0dad",
+  "theme_color": "#6a0dad",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

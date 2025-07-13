@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>BudgetBuddy</h1>
+            <p id="current-month" class="header-month-display"></p> </header>
+
+        <main>
+            <section id="add-transaction-screen" class="active-screen">
+                <h2>บันทึกรายการ</h2>
+                <div class="form-group">
+                    <label for="amount">จำนวนเงิน:</label>
+                    <input type="number" id="amount" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">รายละเอียด:</label>
+                    <input type="text" id="description" placeholder="ค่าอาหารกลางวัน" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">หมวดหมู่:</label>
+                    <select id="category">
+                        <option value="food">อาหาร</option>
+                        <option value="transport">เดินทาง</option>
+                        <option value="shopping">ช้อปปิ้ง</option>
+                        <option value="utilities">ค่าใช้จ่ายบ้าน</option>
+                        <option value="entertainment">บันเทิง</option>
+                        <option value="other">อื่น ๆ</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="transaction-date">วันที่:</label>
+                    <input type="date" id="transaction-date" required>
+                </div>
+                <div class="form-group">
+                    <label>ประเภท:</label>
+                    <div class="radio-group">
+                        <input type="radio" id="expense" name="type" value="expense" checked>
+                        <label for="expense">รายจ่าย</label>
+                        <input type="radio" id="income" name="type" value="income">
+                        <label for="income">รายรับ</label>
+                    </div>
+                </div>
+                <button id="add-transaction-btn" class="primary-btn">เพิ่มรายการ</button>
+
+                <h3>รายการล่าสุด</h3>
+                <div class="transaction-list-container">
+                    <ul id="transaction-list">
+                        </ul>
+                </div>
+            </section>
+
+            <section id="summary-screen" class="hidden-screen">
+                <h2>สรุปรายรับ-รายจ่าย</h2>
+                <div class="month-navigation">
+                    <button id="prev-month-btn" class="nav-arrow"><i class="fas fa-chevron-left"></i></button>
+                    <span id="summary-month-display"></span>
+                    <button id="next-month-btn" class="nav-arrow"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="summary-cards">
+                    <div class="summary-card income-card">
+                        <h3>รายรับรวม</h3>
+                        <p id="total-income">0 บาท</p>
+                    </div>
+                    <div class="summary-card expense-card">
+                        <h3>รายจ่ายรวม</h3>
+                        <p id="total-expense">0 บาท</p>
+                    </div>
+                    <div class="summary-card balance-card">
+                        <h3>ยอดคงเหลือ</h3>
+                        <p id="current-balance">0 บาท</p>
+                    </div>
+                </div>
+
+                <h3>สัดส่วนรายจ่ายตามหมวดหมู่</h3>
+                <div class="chart-container">
+                    <canvas id="category-chart"></canvas>
+                    <p id="no-chart-data" class="hidden-message">ยังไม่มีข้อมูลรายจ่ายสำหรับเดือนนี้</p>
+                </div>
+            </section>
+
+            <section id="budget-screen" class="hidden-screen">
+                <h2>งบประมาณ</h2>
+                <div class="form-group">
+                    <label for="budget-category-input">หมวดหมู่:</label>
+                    <select id="budget-category-input">
+                        <option value="food">อาหาร</option>
+                        <option value="transport">เดินทาง</option>
+                        <option value="shopping">ช้อปปิ้ง</option>
+                        <option value="utilities">ค่าใช้จ่ายบ้าน</option>
+                        <option value="entertainment">บันเทิง</option>
+                        <option value="other">อื่น ๆ</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="budget-amount-input">จำนวนเงินงบประมาณ:</label>
+                    <input type="number" id="budget-amount-input" placeholder="0.00" required>
+                </div>
+                <button id="set-budget-btn" class="primary-btn">ตั้งงบประมาณ</button>
+
+                <h3>งบประมาณปัจจุบันและสถานะ</h3>
+                <ul id="current-budgets">
+                    </ul>
+            </section>
+
+        </main>
+
+        <footer>
+            <nav class="bottom-nav">
+                <button id="nav-add" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>บันทึก</span>
+                </button>
+                <button id="nav-summary" class="nav-item">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>สรุป</span>
+                </button>
+                <button id="nav-budget" class="nav-item">
+                    <i class="fas fa-money-bill-alt"></i>
+                    <span>งบประมาณ</span>
+                </button>
+            </nav>
+        </footer>
+    </div>
+
+    <div id="confirmation-overlay" class="hidden">
+        <div id="confirmation-modal">
+            <h3>ยืนยันการกระทำ</h3>
+            <p id="confirmation-message">คุณแน่ใจหรือไม่?</p>
+            <div class="modal-actions">
+                <button id="confirm-yes-btn" class="modal-btn confirm">ยืนยัน</button>
+                <button id="confirm-no-btn" class="modal-btn cancel">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confetti-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
