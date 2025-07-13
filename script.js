@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const budgetScreen = document.getElementById('budget-screen');
 
     const navAddBtn = document.getElementById('nav-add');
-    const navSummaryBtn = document.getElementById('nav-summary');
+    const navSummaryBtn = document = document.getElementById('nav-summary');
     const navBudgetBtn = document.getElementById('nav-budget');
 
     const amountInput = document.getElementById('amount');
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
     const confirmationMessage = document.getElementById('confirmation-message');
     const confirmYesBtn = document.getElementById('confirm-yes-btn');
-    const confirmNoBtn = document.getElementById('confirm-no-btn');
+    const confirmNoBtn = document = document.getElementById('confirm-no-btn');
 
     const confettiContainer = document.getElementById('confetti-container');
 
@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadTransactions() {
         const storedTransactions = localStorage.getItem('transactions');
+        console.log("Raw value from localStorage ('transactions'):", storedTransactions);
         if (storedTransactions) {
             transactions = JSON.parse(storedTransactions);
         }
@@ -207,6 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function renderTransactions() {
+        console.log("renderTransactions() called. Current transactions array:", transactions); // <--- เพิ่มบรรทัดนี้
+        console.log("Number of transactions to render:", transactions.length); // <--- และบรรทัดนี้
+
         transactionList.innerHTML = ''; // Clear existing list
 
         if (transactions.length === 0) {
@@ -387,10 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentMonth = currentViewDate.getMonth();
         const currentYear = currentViewDate.getFullYear();
 
-        // --- เพิ่มบรรทัดนี้เข้ามา ---
         console.log("All transactions before filtering:", transactions);
         console.log("Current view date for summary:", currentViewDate);
-        // ------------------------
 
         // Filter transactions for the current month/year
         const filteredTransactions = transactions.filter(t => {
@@ -398,9 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear;
         });
 
-        // --- บรรทัดนี้มีอยู่แล้ว ---
         console.log("Filtered Transactions inside updateSummary:", filteredTransactions);
-        // ------------------------
 
         filteredTransactions.forEach(t => {
             if (t.type === 'income') {
