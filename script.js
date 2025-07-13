@@ -328,6 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalExpense = 0;
         const categoryExpenses = {}; // { category: amount }
 
+        console.log("All transactions before filtering:", transactions);
+        console.log("Current view date for summary:", currentViewDate);
+
         // Filter transactions for the currently viewed month in summary screen
         const filteredTransactions = transactions.filter(t => {
             const transactionDate = new Date(t.date);
