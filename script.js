@@ -1,15 +1,3 @@
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-                console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(err => {
-                console.log('ServiceWorker registration failed: ', err);
-            });
-    });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // === Elements ===
     const currentMonthDisplay = document.getElementById('current-month');
@@ -36,111 +24,113 @@ document.addEventListener('DOMContentLoaded', () => {
     let categoryChartCanvas = document.getElementById('category-chart'); // เปลี่ยนเป็น let เพื่อให้ destroy ได้
     const noChartDataMessage = document.getElementById('no-chart-data');
 
-    const prevMonthBtn = document.getElementById('prev-month-btn');
-    const nextMonthBtn = document.getElementById('next-month-btn');
-    const summaryMonthDisplay = document.getElementById('summary-month-display');
-
-    const budgetCategoryInput = document.getElementById('budget-category-input');
-    const budgetAmountInput = document.getElementById('budget-amount-input');
-    const setBudgetBtn = document = document.getElementById('set-budget-btn');
+    const budgetCategorySelect = document.getElementById('budget-category-input'); // ใช้ตาม id ใน index.html
+    const budgetAmountInput = document.getElementById('budget-amount-input');     // ใช้ตาม id ใน index.html
+    const setBudgetBtn = document.getElementById('set-budget-btn');
     const currentBudgetsList = document.getElementById('current-budgets');
 
     const confirmationOverlay = document.getElementById('confirmation-overlay');
+    const confirmationModal = document.getElementById('confirmation-modal');
     const confirmationMessage = document.getElementById('confirmation-message');
     const confirmYesBtn = document.getElementById('confirm-yes-btn');
     const confirmNoBtn = document.getElementById('confirm-no-btn');
 
     const confettiContainer = document.getElementById('confetti-container');
 
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+    const summaryMonthDisplay = document.getElementById('summary-month-display');
+
+
     // === Global Variables ===
     let transactions = [];
-    let budgets = {}; // Store budgets as an object: { category: amount }
-    let currentViewDate = new Date(); // สำหรับหน้าสรุป, เริ่มต้นที่เดือนปัจจุบัน
-    let categoryChartInstance = null; // เก็บ instance ของ Chart.js
+    let budgets = {};
+    let isEditingTransaction = false;
+    let editingTransactionId = null;
+    let isEditingBudget = false;
+    let editingBudgetCategory = null;
+    let currentViewDate = new Date(); // สำหรับหน้าสรุปรายรับ-รายจ่าย
+    let myChart = null; // สำหรับเก็บ instance ของ Chart.js
 
-    // === Constants ===
-    const CATEGORY_NAMES_TH = {
-        food: 'อาหาร',
-        transport: 'เดินทาง',
-        shopping: 'ช้อปปิ้ง',
-        utilities: 'ค่าใช้จ่ายบ้าน',
-        entertainment: 'บันเทิง',
-        other: 'อื่น ๆ'
-    };
 
-    // === Helper Functions ===
+    // === Utility Functions ===
 
-    // แสดงการแจ้งเตือน
-    function showNotification(message, type = 'info', duration = 3000) {
-        let notification = document.querySelector('.notification');
-        if (!notification) {
-            notification = document.createElement('div');
-            notification.classList.add('notification');
-            document.body.appendChild(notification);
-        }
+    // แสดง Notification
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.classList.add('notification', type);
         notification.textContent = message;
-        notification.className = `notification show ${type}`; // Reset classes and add new ones
+        document.body.appendChild(notification);
+
+        // Force reflow for animation
+        void notification.offsetWidth;
+
+        notification.classList.add('show');
 
         setTimeout(() => {
             notification.classList.remove('show');
-        }, duration);
+            notification.addEventListener('transitionend', () => {
+                notification.remove();
+            }, { once: true });
+        }, 3000);
     }
 
-
-    // Function to show confirmation modal
-    function showConfirmation(message) {
+    // แสดง Confirmation Dialog
+    let resolveConfirmationPromise;
+    function showConfirmationDialog(message) {
         confirmationMessage.textContent = message;
         confirmationOverlay.classList.add('show');
         return new Promise(resolve => {
-            const onConfirm = () => {
-                confirmationOverlay.classList.remove('show');
-                confirmYesBtn.removeEventListener('click', onConfirm);
-                confirmNoBtn.removeEventListener('click', onCancel);
-                resolve(true);
-            };
-            const onCancel = () => {
-                confirmationOverlay.classList.remove('show');
-                confirmYesBtn.removeEventListener('click', onConfirm);
-                confirmNoBtn.removeEventListener('click', onCancel);
-                resolve(false);
-            };
-            confirmYesBtn.addEventListener('click', onConfirm);
-            confirmNoBtn.addEventListener('click', onCancel);
+            resolveConfirmationPromise = resolve;
         });
     }
 
-    // Function to trigger confetti animation
-    function triggerConfetti() {
-        if (!confettiContainer) return; // เพิ่มการตรวจสอบ null/undefined
+    function hideConfirmationDialog() {
+        confirmationOverlay.classList.remove('show');
+    }
 
-        const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f']; // More vibrant colors
-        const numParticles = 50; // More particles for a stronger effect
+    confirmYesBtn.addEventListener('click', () => {
+        resolveConfirmationPromise(true);
+        hideConfirmationDialog();
+    });
+
+    confirmNoBtn.addEventListener('click', () => {
+        resolveConfirmationPromise(false);
+        hideConfirmationDialog();
+    });
+
+    // Confetti Effect
+    function triggerConfetti() {
+        const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+        const numParticles = 50;
 
         for (let i = 0; i < numParticles; i++) {
             const particle = document.createElement('div');
             particle.classList.add('confetti-particle');
             particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-            // Randomize starting position at the top
+            // Randomize start position
             const startX = Math.random() * window.innerWidth;
+            const startY = -20; // Start above the viewport
             particle.style.left = `${startX}px`;
-            particle.style.top = `-${Math.random() * 50}px`; // Start slightly above viewport
+            particle.style.top = `${startY}px`;
 
-            // Randomize animation duration and delay
-            const duration = 1.5 + Math.random() * 1.5; // 1.5 to 3 seconds
-            const delay = Math.random() * 0.8; // 0 to 0.8 seconds delay
-            particle.style.animationDuration = `${duration}s`;
-            particle.style.animationDelay = `${delay}s`;
-
-            // Randomize end position (x) and rotation
+            // Randomize end position and rotation
             const endX = startX + (Math.random() - 0.5) * 400; // Spread horizontally
-            const rotateDeg = Math.random() * 720; // Rotate up to 720 degrees
+            const rotateDeg = Math.random() * 720; // Random rotation
+
             particle.style.setProperty('--confetti-end-x', `${endX}px`);
             particle.style.setProperty('--confetti-rotate-deg', `${rotateDeg}deg`);
 
+            // Randomize animation duration and delay
+            const duration = 2 + Math.random() * 2; // 2 to 4 seconds
+            const delay = Math.random() * 0.5; // 0 to 0.5 seconds
+            particle.style.animationDuration = `${duration}s`;
+            particle.style.animationDelay = `${delay}s`;
+
             confettiContainer.appendChild(particle);
 
-            // Remove particle after animation ends to prevent DOM bloat
+            // Remove particle after animation to clean up DOM
             particle.addEventListener('animationend', () => {
                 particle.remove();
             });
@@ -148,311 +138,338 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // แปลชื่อหมวดหมู่เป็นภาษาไทย
-    function getCategoryThaiName(categoryKey) {
-        return CATEGORY_NAMES_TH[categoryKey] || categoryKey; // Fallback to key if not found
-    }
+    // === Screen Navigation ===
+    function showScreen(screenId) {
+        document.querySelectorAll('section').forEach(screen => {
+            screen.classList.remove('active-screen');
+            screen.classList.add('hidden-screen');
+        });
+        document.getElementById(screenId).classList.add('active-screen');
+        document.getElementById(screenId).classList.remove('hidden-screen');
 
-    // แปลชื่อหมวดหมู่ภาษาไทยกลับเป็นคีย์ (สำหรับบันทึก)
-    function getCategoryKey(thaiName) {
-        for (const key in CATEGORY_NAMES_TH) {
-            if (CATEGORY_NAMES_TH[key] === thaiName) {
-                return key;
-            }
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById('nav-' + screenId.replace('-transaction-screen', '-add').replace('-screen', '')).classList.add('active');
+
+        // Update content when screen changes
+        if (screenId === 'summary-screen') {
+            displaySummaryMonth(currentViewDate);
+            updateSummary();
+        } else if (screenId === 'budget-screen') {
+            renderBudgets();
+            clearBudgetForm(); // Clear budget form when navigating to budget screen
+        } else if (screenId === 'add-transaction-screen') {
+            renderTransactions(); // Refresh transaction list when going back to add screen
+            clearTransactionForm(); // Clear transaction form when navigating to add screen
         }
-        return thaiName; // Fallback to thaiName if not found (shouldn't happen with fixed categories)
     }
 
-    // จัดรูปแบบตัวเลขให้เป็นสกุลเงินบาท
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('th-TH', {
-            style: 'currency',
-            currency: 'THB',
-            minimumFractionDigits: 2
-        }).format(amount);
-    }
 
-    // บันทึกรายการลง Local Storage
+    // === Transaction Functions ===
     function saveTransactions() {
         localStorage.setItem('transactions', JSON.stringify(transactions));
     }
 
-    // โหลดรายการจาก Local Storage
     function loadTransactions() {
         const storedTransactions = localStorage.getItem('transactions');
         if (storedTransactions) {
             transactions = JSON.parse(storedTransactions);
-            // Sort transactions by date (descending) after loading
-            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-        } else {
-            transactions = [];
         }
-        renderTransactions();
     }
 
-    // บันทึกงบประมาณลง Local Storage
-    function saveBudgets() {
-        localStorage.setItem('budgets', JSON.stringify(budgets));
-    }
-
-    // โหลดงบประมาณจาก Local Storage
-    function loadBudgets() {
-        const storedBudgets = localStorage.getItem('budgets');
-        return storedBudgets ? JSON.parse(storedBudgets) : {};
-    }
-
-    // ล้างฟอร์ม
-    function clearForm() {
+    function clearTransactionForm() {
         amountInput.value = '';
         descriptionInput.value = '';
         categorySelect.value = 'food';
-        transactionDateInput.value = new Date().toISOString().split('T')[0]; // ตั้งค่าเป็นวันปัจจุบัน
+        transactionDateInput.value = new Date().toISOString().split('T')[0]; // Reset to current date
         expenseRadio.checked = true;
+        addTransactionBtn.textContent = 'เพิ่มรายการ';
+        isEditingTransaction = false;
+        editingTransactionId = null;
     }
 
-    // ล้างฟอร์มงบประมาณ
-    function clearBudgetForm() {
-        budgetCategoryInput.value = 'food';
-        budgetAmountInput.value = '';
+    function getCategoryThaiName(category) {
+        const categories = {
+            food: 'อาหาร',
+            transport: 'เดินทาง',
+            shopping: 'ช้อปปิ้ง',
+            utilities: 'ค่าใช้จ่ายบ้าน',
+            entertainment: 'บันเทิง',
+            salary: 'เงินเดือน',
+            freelance: 'ฟรีแลนซ์',
+            gift: 'ของขวัญ',
+            investment: 'ลงทุน',
+            other: 'อื่น ๆ'
+        };
+        return categories[category] || category;
     }
 
-    // === Render Functions ===
 
-    // แสดงรายการธุรกรรม
     function renderTransactions() {
-        if (!transactionList) return; // Defensive check
-        transactionList.innerHTML = ''; // Clear current list
+        transactionList.innerHTML = ''; // Clear existing list
 
         if (transactions.length === 0) {
-            const noTransactionItem = document.createElement('li');
-            noTransactionItem.textContent = 'ยังไม่มีรายการ';
-            noTransactionItem.classList.add('transaction-item', 'no-transactions');
-            transactionList.appendChild(noTransactionItem);
+            transactionList.innerHTML = '<li class="no-data">ยังไม่มีรายการบันทึก</li>';
             return;
         }
 
-        // Group transactions by date
-        const groupedTransactions = transactions.reduce((acc, transaction) => {
-            const date = transaction.date; // Date is already in YYYY-MM-DD format
-            if (!acc[date]) {
-                acc[date] = [];
-            }
-            acc[date].push(transaction);
-            return acc;
-        }, {});
+        // Sort transactions by date in descending order (latest first)
+        const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // Sort dates in descending order
-        const sortedDates = Object.keys(groupedTransactions).sort((a, b) => new Date(b) - new Date(a));
+        let currentDateGroup = null; // To keep track of the current date for grouping
+        let currentUl = null; // The <ul> element for the current date group
 
-        sortedDates.forEach(date => {
-            const dateGroup = document.createElement('div');
-            dateGroup.classList.add('transaction-date-group');
-            // Format date for display (e.g., 1 มกราคม 2568)
-            const displayDate = new Date(date).toLocaleDateString('th-TH', {
+        sortedTransactions.forEach(t => {
+            // Format date to local Thai string (e.g., 1 มกราคม 2567)
+            // Add 'T00:00:00' to ensure consistent date parsing for UTC vs local time
+            const transactionDate = new Date(t.date + 'T00:00:00').toLocaleDateString('th-TH', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             });
-            dateGroup.innerHTML = `<h4>${displayDate}</h4>`;
-            transactionList.appendChild(dateGroup);
 
-            groupedTransactions[date].forEach(transaction => {
-                const item = document.createElement('li');
-                item.classList.add('transaction-item', transaction.type); // Add expense/income class
+            // Check if a new date group needs to be created
+            if (transactionDate !== currentDateGroup) {
+                currentDateGroup = transactionDate;
 
-                const details = document.createElement('div');
-                details.classList.add('transaction-details');
-                details.innerHTML = `
-                    <div class="transaction-description">${transaction.description}</div>
-                    <div class="transaction-category">${getCategoryThaiName(transaction.category)}</div>
-                `;
+                const dateGroupDiv = document.createElement('div');
+                dateGroupDiv.classList.add('transaction-date-group');
 
-                const amountSpan = document.createElement('span');
-                amountSpan.classList.add('transaction-amount');
-                const sign = transaction.type === 'expense' ? '-' : '+';
-                amountSpan.textContent = `${sign}${formatCurrency(transaction.amount)}`;
+                const dateHeading = document.createElement('h4');
+                dateHeading.textContent = transactionDate;
+                dateGroupDiv.appendChild(dateHeading);
 
-                const actionsDiv = document.createElement('div');
-                actionsDiv.classList.add('transaction-actions');
+                currentUl = document.createElement('ul'); // Create a new <ul> for this date group
+                dateGroupDiv.appendChild(currentUl);
 
-                const editBtn = document.createElement('button');
-                editBtn.classList.add('edit-btn');
-                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-                editBtn.addEventListener('click', () => editTransaction(transaction.id));
+                transactionList.appendChild(dateGroupDiv); // Append the whole date group div to the main list container
+            }
 
-                const deleteBtn = document.createElement('button');
-                deleteBtn.classList.add('delete-btn');
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                deleteBtn.addEventListener('click', async () => {
-                    const confirmed = await showConfirmation('คุณต้องการลบรายการนี้ใช่หรือไม่?');
-                    if (confirmed) {
-                        deleteTransaction(transaction.id);
-                        showNotification('ลบรายการเรียบร้อยแล้ว!', 'success');
-                    } else {
-                        showNotification('ยกเลิกการลบรายการ!', 'info');
-                    }
-                });
+            const li = document.createElement('li');
+            li.dataset.id = t.id;
+            li.classList.add('transaction-item', t.type);
 
-                actionsDiv.appendChild(editBtn);
-                actionsDiv.appendChild(deleteBtn);
-
-                item.appendChild(details);
-                item.appendChild(amountSpan);
-                item.appendChild(actionsDiv);
-
-                transactionList.appendChild(item);
-            });
+            const transactionContent = `
+                <div class="transaction-details">
+                    <span class="transaction-category">${getCategoryThaiName(t.category)}</span>
+                    <span class="transaction-description">${t.description}</span>
+                    <span class="transaction-date">${new Date(t.date).toLocaleDateString('th-TH')}</span>
+                </div>
+                <span class="transaction-amount">${t.type === 'income' ? '+' : '-'} ${t.amount.toLocaleString('th-TH')} บาท</span>
+                <div class="transaction-actions">
+                    <button class="edit-btn" data-id="${t.id}" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn" data-id="${t.id}" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `;
+            li.innerHTML = transactionContent;
+            currentUl.appendChild(li); // Append the transaction item to the current date group's <ul>
         });
-        updateSummary(); // Call updateSummary after rendering transactions
+
+        // Add event listeners using event delegation to the parent ul (transactionList)
+        // This listener is added once and handles clicks on its children
+        // It checks if the clicked element (e.target) or its closest parent is an edit/delete button
+        transactionList.removeEventListener('click', handleTransactionActions); // Remove old listener to prevent duplicates
+        transactionList.addEventListener('click', handleTransactionActions); // Add new listener
+        updateSummary(); // Update summary after rendering transactions
     }
 
+    // New handler function for delegated events
+    function handleTransactionActions(e) {
+        const target = e.target;
+        const transactionItem = target.closest('.transaction-item'); // Find the closest parent <li> with class 'transaction-item'
 
-    // แสดงเดือนปัจจุบันใน header ของแอป
-    function displayCurrentHeaderMonth() {
-        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-                            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-        const currentDate = new Date();
-        const currentMonthIndex = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-        if (currentMonthDisplay) { // ตรวจสอบว่า element มีอยู่จริง
-            currentMonthDisplay.innerHTML = `${monthNames[currentMonthIndex]} ${currentYear}`;
-        } else {
-            console.error("Element with ID 'current-month' not found in the DOM.");
+        if (!transactionItem) return; // If click wasn't on a transaction item, do nothing
+
+        const id = transactionItem.dataset.id; // Get the ID from the <li>'s data-id attribute
+
+        if (target.closest('.edit-btn')) { // Check if the clicked element or its parent is the edit button
+            editTransaction(id);
+        } else if (target.closest('.delete-btn')) { // Check if the clicked element or its parent is the delete button
+            deleteTransaction(id);
         }
     }
 
 
-    // อัปเดตข้อมูลสรุปและกราฟ
-    function updateSummary() {
-        let totalIncome = 0;
-        let totalExpense = 0;
-        const categoryExpenses = {}; // { category: amount }
+    addTransactionBtn.addEventListener('click', () => {
+        const amount = parseFloat(amountInput.value);
+        const description = descriptionInput.value.trim();
+        const category = categorySelect.value;
+        const date = transactionDateInput.value;
+        const type = incomeRadio.checked ? 'income' : 'expense';
 
-        console.log("All transactions before filtering:", transactions);
-        console.log("Current view date for summary:", currentViewDate);
-
-        // Filter transactions for the currently viewed month in summary screen
-        const filteredTransactions = transactions.filter(t => {
-            const transactionDate = new Date(t.date);
-            return transactionDate.getFullYear() === currentViewDate.getFullYear() &&
-                   transactionDate.getMonth() === currentViewDate.getMonth();
-        });
-
-        // --- เพิ่มบรรทัดนี้เข้ามา ---
-        console.log("Filtered Transactions inside updateSummary:", filteredTransactions);
-        // ------------------------
-
-        // ถ้าไม่มีข้อมูลที่ถูกกรอง ให้แสดงข้อความว่า "ไม่มีข้อมูล"
-        if (filteredTransactions.length === 0) {
-            totalIncomeDisplay.textContent = '0.00';
-            totalExpenseDisplay.textContent = '0.00';
-            currentBalanceDisplay.textContent = '0.00';
-            noChartDataMessage.classList.remove('hidden'); // Show "No data" message
-            renderCategoryChart([]); // Render empty chart
+        if (isNaN(amount) || amount <= 0 || description === '' || date === '') {
+            showNotification('กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง', 'error');
             return;
         }
 
-        // ซ่อนข้อความ "ไม่มีข้อมูล" ถ้ามีข้อมูล
-        noChartDataMessage.classList.add('hidden'); // Hide "No data" message
-
-
-        filteredTransactions.forEach(transaction => {
-            if (transaction.type === 'income') {
-                totalIncome += transaction.amount;
-            } else {
-                totalExpense += transaction.amount;
-                // Aggregate expenses by category for chart
-                if (!categoryExpenses[transaction.category]) {
-                    categoryExpenses[transaction.category] = 0;
-                }
-                categoryExpenses[transaction.category] += transaction.amount;
+        if (isEditingTransaction) {
+            // Update existing transaction
+            const index = transactions.findIndex(t => t.id == editingTransactionId); // Use == for loose comparison if IDs can be number/string
+            if (index !== -1) {
+                transactions[index] = { id: editingTransactionId, amount, description, category, date, type };
+                showNotification('แก้ไขรายการเรียบร้อย!', 'success');
             }
-        });
+        } else {
+            // Add new transaction
+            const newTransaction = {
+                id: Date.now(), // Use Date.now() as a number for ID
+                amount,
+                description,
+                category,
+                date,
+                type
+            };
+            transactions.push(newTransaction);
+            showNotification('เพิ่มรายการใหม่เรียบร้อย!', 'success');
+            triggerConfetti(); // เรียกใช้ Confetti เมื่อเพิ่มรายการใหม่
+        }
 
-        if (totalIncomeDisplay) {
-            totalIncomeDisplay.textContent = formatCurrency(totalIncome);
-        }
-        if (totalExpenseDisplay) {
-            totalExpenseDisplay.textContent = formatCurrency(totalExpense);
-        }
-        if (currentBalanceDisplay) {
-            currentBalanceDisplay.textContent = formatCurrency(totalIncome - totalExpense);
-            if (totalIncome - totalExpense < 0) {
-                currentBalanceDisplay.style.color = '#dc3545'; // Red for negative balance
+        saveTransactions();
+        renderTransactions();
+        clearTransactionForm();
+    });
+
+    function editTransaction(id) {
+        const transactionToEdit = transactions.find(t => t.id == id); // Use == for loose comparison
+        if (transactionToEdit) {
+            amountInput.value = transactionToEdit.amount;
+            descriptionInput.value = transactionToEdit.description;
+            categorySelect.value = transactionToEdit.category;
+            transactionDateInput.value = transactionToEdit.date; // Date is already in 'YYYY-MM-DD' format
+            if (transactionToEdit.type === 'income') {
+                incomeRadio.checked = true;
             } else {
-                currentBalanceDisplay.style.color = '#6a0dad'; // Purple for positive balance
+                expenseRadio.checked = true;
             }
+            addTransactionBtn.textContent = 'บันทึกการแก้ไข';
+            isEditingTransaction = true;
+            editingTransactionId = id;
+            showNotification('กำลังแก้ไขรายการ...', 'info');
         }
-        renderCategoryChart(categoryExpenses);
     }
 
-    // แสดงเดือนสำหรับหน้าสรุป
-    function displaySummaryMonth(date) {
-        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-                            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-        if (summaryMonthDisplay) { // Defensive check
-            summaryMonthDisplay.textContent = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    async function deleteTransaction(id) {
+        const confirmed = await showConfirmationDialog('คุณแน่ใจที่จะลบรายการนี้หรือไม่?');
+        if (confirmed) {
+            transactions = transactions.filter(t => t.id != id); // Use != for loose comparison
+            saveTransactions();
+            renderTransactions();
+            showNotification('ลบรายการเรียบร้อย!', 'success');
+        } else {
+            showNotification('ยกเลิกการลบรายการ!', 'info');
         }
+    }
+
+
+    // === Summary Functions ===
+
+    function displayCurrentHeaderMonth() {
+        const options = { year: 'numeric', month: 'long' };
+        currentMonthDisplay.textContent = new Date().toLocaleDateString('th-TH', options);
+    }
+
+    function displaySummaryMonth(date) {
+        const options = { year: 'numeric', month: 'long' };
+        summaryMonthDisplay.textContent = date.toLocaleDateString('th-TH', options);
+    }
+
+    function changeMonth(offset) {
+        currentViewDate.setMonth(currentViewDate.getMonth() + offset);
+        displaySummaryMonth(currentViewDate);
         updateSummary();
     }
 
-    // เปลี่ยนเดือนในหน้าสรุป
-    function changeMonth(delta) {
-        currentViewDate.setMonth(currentViewDate.getMonth() + delta);
-        displaySummaryMonth(currentViewDate);
+    function updateSummary() {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        const categoryExpenses = {};
+        const currentMonth = currentViewDate.getMonth();
+        const currentYear = currentViewDate.getFullYear();
+
+        // --- เพิ่มบรรทัดนี้เข้ามา ---
+        console.log("All transactions before filtering:", transactions);
+        console.log("Current view date for summary:", currentViewDate);
+        // ------------------------
+
+        // Filter transactions for the current month/year
+        const filteredTransactions = transactions.filter(t => {
+            const transactionDate = new Date(t.date + 'T00:00:00'); // Ensure date is parsed correctly in local timezone
+            return transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear;
+        });
+
+        // --- บรรทัดนี้มีอยู่แล้ว ---
+        console.log("Filtered Transactions inside updateSummary:", filteredTransactions);
+        // ------------------------
+
+        filteredTransactions.forEach(t => {
+            if (t.type === 'income') {
+                totalIncome += t.amount;
+            } else {
+                totalExpense += t.amount;
+                // Accumulate expenses by category
+                if (categoryExpenses[t.category]) {
+                    categoryExpenses[t.category] += t.amount;
+                } else {
+                    categoryExpenses[t.category] = t.amount;
+                }
+            }
+        });
+
+        const currentBalance = totalIncome - totalExpense;
+
+        totalIncomeDisplay.textContent = totalIncome.toLocaleString('th-TH') + ' บาท';
+        totalExpenseDisplay.textContent = totalExpense.toLocaleString('th-TH') + ' บาท';
+        currentBalanceDisplay.textContent = currentBalance.toLocaleString('th-TH') + ' บาท';
+
+        // Update the chart
+        updateChart(categoryExpenses);
+
+        // Update budget status (this will re-render budgets with current month's expenses)
+        renderBudgets();
     }
 
-    // สร้างหรืออัปเดตกราฟวงกลม (Pie Chart)
-    function renderCategoryChart(categoryExpenses) {
-        // Destroy existing chart if it exists
-        if (categoryChartInstance) {
-            categoryChartInstance.destroy();
+    function updateChart(categoryExpenses) {
+        const categories = Object.keys(categoryExpenses).map(cat => getCategoryThaiName(cat));
+        const amounts = Object.values(categoryExpenses);
+
+        if (myChart) {
+            myChart.destroy(); // Destroy existing chart instance
         }
 
-        const categoryLabels = Object.keys(categoryExpenses).map(key => getCategoryThaiName(key));
-        const categoryData = Object.values(categoryExpenses);
-        const hasData = categoryData.some(amount => amount > 0);
-
-        if (noChartDataMessage && categoryChartCanvas) { // Defensive check
-            if (hasData) {
-                noChartDataMessage.classList.add('hidden-message');
-                categoryChartCanvas.style.display = 'block';
-            } else {
-                noChartDataMessage.classList.remove('hidden-message');
-                categoryChartCanvas.style.display = 'none';
-            }
+        if (amounts.length === 0 || amounts.every(amount => amount === 0)) {
+            categoryChartCanvas.classList.add('hidden'); // Hide canvas
+            noChartDataMessage.classList.remove('hidden-message'); // Show message
+            return;
+        } else {
+            categoryChartCanvas.classList.remove('hidden'); // Show canvas
+            noChartDataMessage.classList.add('hidden-message'); // Hide message
         }
 
+        const data = {
+            labels: categories,
+            datasets: [{
+                data: amounts,
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#6C757D', '#28A745', '#DC3545', '#17A2B8'
+                ],
+                hoverOffset: 4
+            }]
+        };
 
-        if (!categoryChartCanvas || !hasData) { // เพิ่มการตรวจสอบ categoryChartCanvas
-            return; // ไม่ต้องสร้างกราฟถ้าไม่มีข้อมูลหรือ canvas ไม่พร้อม
-        }
-
-
-        const backgroundColors = [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-            '#C9CBCE', '#A3C4BC', '#D7BDE2', '#AF7AC5', '#5DADE2', '#48C9B0'
-        ];
-
-        categoryChartInstance = new Chart(categoryChartCanvas, {
-            type: 'pie',
-            data: {
-                labels: categoryLabels,
-                datasets: [{
-                    data: categoryData,
-                    backgroundColor: backgroundColors,
-                    hoverOffset: 4
-                }]
-            },
+        const ctx = categoryChartCanvas.getContext('2d');
+        myChart = new Chart(ctx, { // Assign to myChart variable
+            type: 'doughnut',
+            data: data,
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // อนุญาตให้ปรับขนาดตาม container
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right', // ย้าย legend ไปทางขวา
+                        position: 'right',
                         labels: {
                             font: {
-                                family: 'Kanit' // ใช้ font Kanit สำหรับ legend
+                                family: 'Kanit', // ใช้ฟอนต์ Kanit ในกราฟ
                             }
                         }
                     },
@@ -464,16 +481,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                     label += ': ';
                                 }
                                 if (context.parsed !== null) {
-                                    label += formatCurrency(context.parsed);
+                                    label += context.parsed.toLocaleString('th-TH') + ' บาท';
                                 }
                                 return label;
                             }
                         },
                         bodyFont: {
-                            family: 'Kanit' // ใช้ font Kanit สำหรับ tooltip
+                            family: 'Kanit',
                         },
                         titleFont: {
-                            family: 'Kanit'
+                            family: 'Kanit',
                         }
                     }
                 }
@@ -481,231 +498,132 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // แสดงงบประมาณปัจจุบัน
+
+    // === Budget Functions ===
+    function saveBudgets() {
+        localStorage.setItem('budgets', JSON.stringify(budgets));
+    }
+
+    function loadBudgets() {
+        const storedBudgets = localStorage.getItem('budgets');
+        return storedBudgets ? JSON.parse(storedBudgets) : {};
+    }
+
+    function clearBudgetForm() {
+        budgetAmountInput.value = '';
+        budgetCategorySelect.value = 'food';
+        setBudgetBtn.textContent = 'บันทึกงบประมาณ';
+        isEditingBudget = false;
+        editingBudgetCategory = null;
+    }
+
     function renderBudgets() {
-        if (!currentBudgetsList) return; // Defensive check
-        currentBudgetsList.innerHTML = '';
-        const allCategories = Object.keys(CATEGORY_NAMES_TH);
+        currentBudgetsList.innerHTML = ''; // Clear existing list
 
-        if (Object.keys(budgets).length === 0) {
-            const noBudgetItem = document.createElement('li');
-            noBudgetItem.textContent = 'ยังไม่มีงบประมาณตั้งค่า';
-            noBudgetItem.classList.add('budget-item', 'no-budgets');
-            currentBudgetsList.appendChild(noBudgetItem);
-            return;
-        }
+        // Get expenses for the current month to compare against budget
+        const currentMonthExpenses = {};
+        const currentMonth = currentViewDate.getMonth();
+        const currentYear = currentViewDate.getFullYear();
 
-        allCategories.forEach(categoryKey => {
-            const budgetedAmount = budgets[categoryKey] || 0;
-            if (budgetedAmount === 0) return; // ไม่แสดงหมวดหมู่ที่งบประมาณเป็น 0 หรือไม่ได้ตั้ง
-
-            const spentAmount = transactions
-                .filter(t => t.type === 'expense' && t.category === categoryKey &&
-                             new Date(t.date).getMonth() === new Date().getMonth() &&
-                             new Date(t.date).getFullYear() === new Date().getFullYear())
-                .reduce((sum, t) => sum + t.amount, 0);
-
-            const remainingAmount = budgetedAmount - spentAmount;
-
-            const item = document.createElement('li');
-            item.classList.add('budget-item');
-
-            const infoDiv = document.createElement('div');
-            infoDiv.classList.add('budget-info');
-
-            const categoryName = document.createElement('div');
-            categoryName.classList.add('budget-category-name');
-            categoryName.textContent = getCategoryThaiName(categoryKey);
-
-            const amountDisplay = document.createElement('div');
-            amountDisplay.classList.add('budget-amount-display');
-            amountDisplay.textContent = `งบประมาณ: ${formatCurrency(budgetedAmount)} | ใช้ไป: ${formatCurrency(spentAmount)}`;
-
-            const statusSpan = document.createElement('span');
-            statusSpan.classList.add('budget-status');
-            if (remainingAmount < 0) {
-                statusSpan.textContent = `เกินงบ: ${formatCurrency(Math.abs(remainingAmount))}`;
-                statusSpan.classList.add('over-budget');
-            } else if (remainingAmount < budgetedAmount * 0.2 && budgetedAmount > 0) { // น้อยกว่า 20% ของงบประมาณ
-                statusSpan.textContent = `เหลืองบ: ${formatCurrency(remainingAmount)} (ใกล้หมด)`;
-                statusSpan.classList.add('warning-budget');
+        transactions.filter(t => {
+            const transactionDate = new Date(t.date + 'T00:00:00');
+            return t.type === 'expense' &&
+                   transactionDate.getMonth() === currentMonth &&
+                   transactionDate.getFullYear() === currentYear;
+        }).forEach(t => {
+            if (currentMonthExpenses[t.category]) {
+                currentMonthExpenses[t.category] += t.amount;
+            } else {
+                currentMonthExpenses[t.category] = t.amount;
             }
-            else {
-                statusSpan.textContent = `เหลืองบ: ${formatCurrency(remainingAmount)}`;
-            }
-
-            infoDiv.appendChild(categoryName);
-            infoDiv.appendChild(amountDisplay);
-            infoDiv.appendChild(statusSpan);
-
-            const actionsDiv = document.createElement('div');
-            actionsDiv.classList.add('budget-actions');
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.classList.add('delete-budget-btn');
-            deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-            deleteBtn.addEventListener('click', async () => {
-                const confirmed = await showConfirmation(`คุณต้องการลบงบประมาณสำหรับหมวดหมู่ "${getCategoryThaiName(categoryKey)}" ใช่หรือไม่?`);
-                if (confirmed) {
-                    delete budgets[categoryKey];
-                    saveBudgets();
-                    renderBudgets();
-                    showNotification(`ลบงบประมาณสำหรับ ${getCategoryThaiName(categoryKey)} เรียบร้อย!`, 'success');
-                } else {
-                    showNotification('ยกเลิกการลบงบประมาณ!', 'info');
-                }
-            });
-
-            actionsDiv.appendChild(deleteBtn);
-
-            item.appendChild(infoDiv);
-            item.appendChild(actionsDiv);
-            currentBudgetsList.appendChild(item);
         });
+
+        const budgetKeys = Object.keys(budgets);
+
+        if (budgetKeys.length === 0) {
+            currentBudgetsList.innerHTML = '<li class="no-data">ยังไม่ได้ตั้งงบประมาณ</li>';
+            return;
+        }
+
+
+        budgetKeys.forEach(category => {
+            if (budgets.hasOwnProperty(category)) {
+                const budgetAmount = budgets[category];
+                const expensesForCategory = currentMonthExpenses[category] || 0;
+                const remainingBudget = budgetAmount - expensesForCategory;
+
+                const li = document.createElement('li');
+                li.classList.add('budget-item');
+                li.dataset.category = category;
+
+                const statusClass = remainingBudget < 0 ? 'over-budget' : (remainingBudget <= budgetAmount * 0.2 ? 'warning-budget' : ''); // Added warning status
+                const statusText = remainingBudget < 0 ?
+                                   `เกินงบประมาณ ${Math.abs(remainingBudget).toLocaleString('th-TH')} บาท` :
+                                   `คงเหลือ ${remainingBudget.toLocaleString('th-TH')} บาท`;
+
+                li.innerHTML = `
+                    <div class="budget-info">
+                        <span class="budget-category-name">${getCategoryThaiName(category)}</span>
+                        <div class="budget-status ${statusClass}">
+                            <span>งบประมาณ: ${budgetAmount.toLocaleString('th-TH')} บาท</span> |
+                            <span>ใช้ไป: ${expensesForCategory.toLocaleString('th-TH')} บาท</span> |
+                            <span>${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="budget-actions">
+                        <button class="edit-budget-btn" data-category="${category}" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                        <button class="delete-budget-btn" data-category="${category}" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                currentBudgetsList.appendChild(li);
+            }
+        });
+
+        // Add event listeners for edit/delete buttons using delegation for budgets
+        currentBudgetsList.removeEventListener('click', handleBudgetActions); // Prevent multiple listeners
+        currentBudgetsList.addEventListener('click', handleBudgetActions);
+    }
+
+    // New handler for budget actions
+    function handleBudgetActions(e) {
+        const target = e.target;
+        const budgetItem = target.closest('.budget-item');
+
+        if (!budgetItem) return;
+
+        const category = budgetItem.dataset.category;
+
+        if (target.closest('.edit-budget-btn')) {
+            editBudget(category);
+        } else if (target.closest('.delete-budget-btn')) {
+            deleteBudget(category);
+        }
     }
 
 
-    // === Core Logic Functions ===
+    function editBudget(category) {
+        budgetCategorySelect.value = category;
+        budgetAmountInput.value = budgets[category];
+        setBudgetBtn.textContent = 'บันทึกการแก้ไขงบประมาณ';
+        isEditingBudget = true;
+        editingBudgetCategory = category;
+        showNotification(`กำลังแก้ไขงบประมาณสำหรับ ${getCategoryThaiName(category)}...`, 'info');
+    }
 
-    // เพิ่มรายการ
-    addTransactionBtn.addEventListener('click', () => {
-        const amount = parseFloat(amountInput.value);
-        const description = descriptionInput.value.trim();
-        const category = categorySelect.value;
-        const date = transactionDateInput.value;
-        const type = expenseRadio.checked ? 'expense' : 'income';
-
-        if (isNaN(amount) || amount <= 0 || description === '' || date === '') {
-            showNotification('กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง', 'error');
-            return;
-        }
-
-        const newTransaction = {
-            id: Date.now(), // Unique ID
-            amount,
-            description,
-            category,
-            date,
-            type
-        };
-
-        transactions.unshift(newTransaction); // Add to the beginning for latest first
-        saveTransactions();
-        renderTransactions();
-        clearForm();
-        showNotification('เพิ่มรายการเรียบร้อยแล้ว!', 'success');
-    });
-
-    // แก้ไขรายการ
-    function editTransaction(id) {
-        const transactionToEdit = transactions.find(t => t.id === id);
-        if (!transactionToEdit) {
-            showNotification('ไม่พบรายการที่จะแก้ไข', 'error');
-            return;
-        }
-
-        // Fill the form with transaction data
-        amountInput.value = transactionToEdit.amount;
-        descriptionInput.value = transactionToEdit.description;
-        categorySelect.value = transactionToEdit.category;
-        transactionDateInput.value = transactionToEdit.date; // YYYY-MM-DD format
-        if (transactionToEdit.type === 'expense') {
-            expenseRadio.checked = true;
+    async function deleteBudget(category) {
+        const confirmed = await showConfirmationDialog(`คุณแน่ใจที่จะลบงบประมาณสำหรับ ${getCategoryThaiName(category)} นี้หรือไม่?`);
+        if (confirmed) {
+            delete budgets[category];
+            saveBudgets();
+            renderBudgets();
+            showNotification('ลบงบประมาณเรียบร้อย!', 'success');
         } else {
-            incomeRadio.checked = true;
-        }
-
-        // Change button text and behavior
-        addTransactionBtn.textContent = 'อัปเดตรายการ';
-        addTransactionBtn.onclick = async () => {
-            const confirmed = await showConfirmation('คุณต้องการอัปเดตรายการนี้ใช่หรือไม่?');
-            if (!confirmed) {
-                showNotification('ยกเลิกการอัปเดตรายการ!', 'info');
-                // Restore original button state
-                addTransactionBtn.textContent = 'เพิ่มรายการ';
-                addTransactionBtn.onclick = null; // Remove this specific handler
-                addTransactionBtn.addEventListener('click', () => addTransactionBtn.click()); // Re-add general handler
-                clearForm();
-                return;
-            }
-
-            const updatedAmount = parseFloat(amountInput.value);
-            const updatedDescription = descriptionInput.value.trim();
-            const updatedCategory = categorySelect.value;
-            const updatedDate = transactionDateInput.value;
-            const updatedType = expenseRadio.checked ? 'expense' : 'income';
-
-            if (isNaN(updatedAmount) || updatedAmount <= 0 || updatedDescription === '' || updatedDate === '') {
-                showNotification('กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง', 'error');
-                return;
-            }
-
-            transactionToEdit.amount = updatedAmount;
-            transactionToEdit.description = updatedDescription;
-            transactionToEdit.category = updatedCategory;
-            transactionToEdit.date = updatedDate;
-            transactionToEdit.type = updatedType;
-
-            saveTransactions();
-            renderTransactions(); // Re-render to show updated list
-            clearForm(); // Clear the form
-            showNotification('อัปเดตรายการเรียบร้อยแล้ว!', 'success');
-
-            // Restore original button state
-            addTransactionBtn.textContent = 'เพิ่มรายการ';
-            addTransactionBtn.onclick = null; // Remove this specific handler
-            // Ensure the primary button's original click listener is re-attached if it was removed.
-            // A more robust solution involves using event listeners and removing them by reference.
-            // For simplicity, we'll just rely on the DOMContentLoaded listener and assume it handles re-adding.
-            // Or, if using an anonymous function for the main add listener, you might need to re-bind it.
-            // A better way for this particular setup would be to use a named function for addTransactionBtn's main click.
-            // For now, if the original listener is defined via addEventListener, it remains.
-            // If it was defined as .onclick, this would override it, so we need to reset it.
-            // The initial listener is defined with addEventListener, so it should be fine.
-        };
-        showNotification('โปรดแก้ไขข้อมูลแล้วกด "อัปเดตรายการ"');
-    }
-
-
-    // ลบรายการ
-    function deleteTransaction(id) {
-        transactions = transactions.filter(transaction => transaction.id !== id);
-        saveTransactions();
-        renderTransactions();
-    }
-
-
-    // จัดการการเปลี่ยนหน้าจอ
-    function showScreen(screenId) {
-        // ซ่อนทุกหน้าจอ
-        addTransactionScreen.classList.remove('active-screen');
-        summaryScreen.classList.remove('active-screen');
-        budgetScreen.classList.remove('active-screen');
-
-        // ลบ active class ออกจากปุ่ม nav ทั้งหมด
-        navAddBtn.classList.remove('active');
-        navSummaryBtn.classList.remove('active');
-        navBudgetBtn.classList.remove('active');
-
-        // แสดงหน้าจอที่เลือกและเพิ่ม active class ให้ปุ่ม nav ที่เกี่ยวข้อง
-        if (screenId === 'add-transaction-screen') {
-            addTransactionScreen.classList.add('active-screen');
-            navAddBtn.classList.add('active');
-        } else if (screenId === 'summary-screen') {
-            summaryScreen.classList.add('active-screen');
-            navSummaryBtn.classList.add('active');
-            currentViewDate = new Date(); // รีเซ็ตเป็นเดือนปัจจุบันเมื่อเข้าหน้าสรุป
-            displaySummaryMonth(currentViewDate); // อัปเดตข้อมูลสรุปและกราฟสำหรับเดือนปัจจุบัน
-        } else if (screenId === 'budget-screen') {
-            budgetScreen.classList.add('active-screen');
-            navBudgetBtn.classList.add('active');
-            renderBudgets(); // แสดงงบประมาณเมื่อเข้าหน้า
+            showNotification('ยกเลิกการลบงบประมาณ!', 'info');
         }
     }
 
-    // ตั้งค่างบประมาณ
     setBudgetBtn.addEventListener('click', async () => {
-        const category = budgetCategoryInput.value;
+        const category = budgetCategorySelect.value;
         const amount = parseFloat(budgetAmountInput.value);
 
         if (isNaN(amount) || amount < 0) {
@@ -713,21 +631,43 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (budgets[category] && budgets[category] > 0) {
-            // If budget for this category already exists, ask for confirmation to overwrite
-            const confirmed = await showConfirmation(`มีงบประมาณสำหรับ ${getCategoryThaiName(category)} อยู่แล้ว (${formatCurrency(budgets[category])}) คุณต้องการตั้งค่าใหม่เป็น ${formatCurrency(amount)} ใช่หรือไม่?`);
-            if (confirmed) {
-                budgets[category] = amount;
-                showNotification(`อัปเดตงบประมาณสำหรับ ${getCategoryThaiName(category)} เรียบร้อย!`, 'success');
-                triggerConfetti(); // เรียกใช้ Confetti
-            } else {
-                showNotification('ยกเลิกการตั้งงบประมาณ!', 'info');
-                return; // ออกจากฟังก์ชัน setBudgetBtn.addEventListener
+        if (isEditingBudget) {
+            // If editing, check if category is being changed and if new category exists
+            if (category !== editingBudgetCategory && budgets.hasOwnProperty(category)) {
+                const confirmed = await showConfirmationDialog(`หมวดหมู่ "${getCategoryThaiName(category)}" มีงบประมาณอยู่แล้ว ต้องการอัปเดตหรือไม่?`);
+                if (!confirmed) {
+                    showNotification('ยกเลิกการแก้ไขงบประมาณ!', 'info');
+                    return;
+                }
+                // If confirmed and category changed, delete old budget first
+                delete budgets[editingBudgetCategory];
+            } else if (category === editingBudgetCategory && budgets[category] === amount) {
+                // If no changes, just notify
+                showNotification('ไม่มีการเปลี่ยนแปลงงบประมาณ', 'info');
+                clearBudgetForm();
+                return;
             }
-        } else {
             budgets[category] = amount;
-            showNotification(`ตั้งงบประมาณสำหรับ ${getCategoryThaiName(category)} เรียบร้อย!`, 'success');
-            triggerConfetti(); // เรียกใช้ Confetti
+            showNotification(`อัปเดตงบประมาณสำหรับ ${getCategoryThaiName(category)} เรียบร้อย!`, 'success');
+            triggerConfetti();
+
+        } else {
+            // Adding new budget
+            if (budgets.hasOwnProperty(category)) {
+                const confirmed = await showConfirmationDialog(`หมวดหมู่ "${getCategoryThaiName(category)}" มีงบประมาณอยู่แล้ว ต้องการอัปเดตหรือไม่?`);
+                if (confirmed) {
+                    budgets[category] = amount;
+                    showNotification(`อัปเดตงบประมาณสำหรับ ${getCategoryThaiName(category)} เรียบร้อย!`, 'success');
+                    triggerConfetti(); // เรียกใช้ Confetti
+                } else {
+                    showNotification('ยกเลิกการตั้งงบประมาณ!', 'info');
+                    return;
+                }
+            } else {
+                budgets[category] = amount;
+                showNotification(`ตั้งงบประมาณสำหรับ ${getCategoryThaiName(category)} เรียบร้อย!`, 'success');
+                triggerConfetti(); // เรียกใช้ Confetti
+            }
         }
 
         saveBudgets();
