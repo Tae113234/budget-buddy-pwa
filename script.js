@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
     const confirmationMessage = document.getElementById('confirmation-message');
     const confirmYesBtn = document.getElementById('confirm-yes-btn');
-    const confirmNoBtn = document = document.getElementById('confirm-no-btn');
+    const confirmNoBtn = document.getElementById('confirm-no-btn');
 
     const confettiContainer = document.getElementById('confetti-container');
 
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadTransactions() {
         const storedTransactions = localStorage.getItem('transactions');
-        console.log("Raw value from localStorage ('transactions'):", storedTransactions);
+        console.log("Raw value from localStorage ('transactions'):", storedTransactions); // <--- เพิ่มบรรทัดนี้
         if (storedTransactions) {
             transactions = JSON.parse(storedTransactions);
         }
@@ -208,9 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function renderTransactions() {
-        console.log("renderTransactions() called. Current transactions array:", transactions); // <--- เพิ่มบรรทัดนี้
-        console.log("Number of transactions to render:", transactions.length); // <--- และบรรทัดนี้
-
         transactionList.innerHTML = ''; // Clear existing list
 
         if (transactions.length === 0) {
@@ -687,15 +684,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // === Initial Load ===
-    displayCurrentHeaderMonth(); // Display current month in header
-    loadTransactions(); // Load transactions and render them initially
-    budgets = loadBudgets(); // Load budgets
-
-    // ตั้งค่าเริ่มต้นของช่องเลือกวันที่ให้เป็นวันปัจจุบัน
-    transactionDateInput.value = new Date().toISOString().split('T')[0];
-
-    // Display initial month for summary (before showing screen if it's summary)
-    displaySummaryMonth(currentViewDate);
-
-    showScreen('add-transaction-screen'); // Start with the add transaction screen
+displayCurrentHeaderMonth(); // แสดงเดือนปัจจุบันในหัวข้อ
+loadTransactions();          // โหลดรายการจาก localStorage
+renderTransactions();        // ✅ แสดงรายการทันทีหลังโหลด
+budgets = loadBudgets();     // โหลดข้อมูลงบประมาณจาก localStorage
+transactionDateInput.value = new Date().toISOString().split('T')[0]; // ตั้งวันที่เริ่มต้นเป็นวันนี้
+displaySummaryMonth(currentViewDate); // แสดงเดือนในหน้าสรุป
+showScreen('add-transaction-screen'); // เริ่มต้นที่หน้าบันทึกรายการ
+ // Start with the add transaction screen
 });
